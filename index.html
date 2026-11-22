@@ -1,127 +1,385 @@
+
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vinted AI Business</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root { color-scheme: dark; --bg:#101114; --panel:#1b1d22; --line:#30333b; --muted:#a6a9b2; --accent:#a78bfa; }
-    * { box-sizing:border-box; }
-    body { margin:0; padding:24px 16px; background:var(--bg); color:#f5f5f7; font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; }
-    main { width:min(100%,680px); margin:0 auto; }
-    h1 { margin:0 0 6px; font-size:28px; }
-    .sub { color:var(--muted); margin:0 0 24px; }
-    section { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px; margin:16px 0; }
-    h2 { margin:0 0 14px; font-size:19px; }
-    label { display:block; margin:12px 0 6px; color:#d7d8de; font-size:14px; }
-    input { width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; background:#111318; color:white; font:inherit; }
-    button { padding:11px 15px; margin:12px 8px 0 0; border:0; border-radius:10px; background:var(--accent); color:#171321; font-weight:700; font-size:15px; }
-    button.secondary { background:#343741; color:white; }
-    button:disabled { opacity:.5; }
-    #status { white-space:pre-wrap; color:#d7d8de; overflow-wrap:anywhere; }
-    .hint { color:var(--muted); font-size:13px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vinted AI Business</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#10131c;color:#f4f5f9;font-family:Arial,sans-serif}
+header{padding:22px;background:#191e2b;border-bottom:1px solid #303747}
+h1{margin:0;font-size:23px;color:#a78bfa}
+header p{color:#aab1c2;margin:7px 0 0}
+main{max-width:1050px;margin:25px auto;padding:0 16px}
+.card{background:#191e2b;border:1px solid #303747;border-radius:13px;padding:18px;margin-bottom:18px}
+h2{font-size:18px;margin-top:0}
+input,select,textarea,button{width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #3a4355;background:#101521;color:white;font-size:15px}
+button{background:#8061e8;border:0;font-weight:bold;cursor:pointer}
+button.secondary{background:#30394b}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.metric{background:#222a3b;padding:16px;border-radius:10px}
+.metric small{color:#aab1c2}
+.metric strong{display:block;font-size:24px;margin-top:9px}
+.hidden{display:none}
+.muted{color:#aab1c2;font-size:13px}
+.item{padding:12px 0;border-bottom:1px solid #303747}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.status{color:#a78bfa;margin:10px 0}
+</style>
 </head>
 <body>
+<header>
+<h1>Vinted AI Business</h1>
+<p>Il tuo centro di gestione vendite</p>
+</header>
+
 <main>
-  <h1>Vinted AI Business</h1>
-  <p class="sub">Pannello iniziale per gestire il tuo team di vendita.</p>
+<section class="card" id="connection">
+<h2>1. Collega Supabase</h2>
+<input id="projectUrl" placeholder="Project URL">
+<input id="apiKey" placeholder="Publishable key">
+<button onclick="connect()">Collega Supabase</button>
+<p class="muted">Usa il Project URL e la chiave sb_publishable_ del tuo progetto. Non inserire mai la Secret key.</p>
+</section>
 
-  <section>
-    <h2>1. Collega Supabase</h2>
-    <p class="hint">Inserisci l'URL del progetto e la chiave pubblica (Publishable key) del tuo progetto Supabase. Non inserire mai la Secret key o service_role key.</p>
-    <label for="projectUrl">Project URL</label>
-    <input id="projectUrl" type="url" placeholder="https://xxxxx.supabase.co" autocomplete="url">
-    <label for="publishableKey">Publishable key</label>
-    <input id="publishableKey" type="password" placeholder="sb_publishable_..." autocomplete="off">
-    <button id="connectBtn">Collega Supabase</button>
-  </section>
+<section class="card hidden" id="auth">
+<h2>2. Accedi al tuo account</h2>
+<input id="email" type="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Accedi</button>
+<button class="secondary" onclick="signup()">Crea account</button>
+<p id="authStatus" class="status"></p>
+</section>
 
-  <section>
-    <h2>2. Account</h2>
-    <label for="email">Email</label>
-    <input id="email" type="email" placeholder="nome@email.com" autocomplete="email">
-    <label for="password">Password</label>
-    <input id="password" type="password" placeholder="Almeno 6 caratteri" autocomplete="current-password">
-    <button id="signupBtn" class="secondary">Crea account</button>
-    <button id="loginBtn">Accedi</button>
-    <button id="logoutBtn" class="secondary">Esci</button>
-  </section>
+<section class="hidden" id="app">
+<div class="card">
+<div class="row">
+<h2>Il tuo workspace</h2>
+<button class="secondary" style="width:auto" onclick="logout()">Esci</button>
+</div>
+<select id="workspaceSelect" onchange="selectWorkspace()">
+<option value="">Caricamento workspace...</option>
+</select>
+<p id="userInfo" class="muted"></p>
+<p id="appStatus" class="status"></p>
+</div>
 
-  <section>
-    <h2>3. Crea il workspace</h2>
-    <label for="workspaceName">Nome del workspace</label>
-    <input id="workspaceName" value="Vinted AI Business">
-    <button id="workspaceBtn">Crea workspace</button>
-    <p class="hint">Devi prima collegare Supabase ed effettuare l'accesso.</p>
-  </section>
+<div class="card">
+<h2>Dashboard</h2>
+<div class="grid">
+<div class="metric"><small>Fatturato</small><strong id="revenue">€0,00</strong></div>
+<div class="metric"><small>Costi prodotti venduti</small><strong id="costs">€0,00</strong></div>
+<div class="metric"><small>Spese registrate</small><strong id="expensesTotal">€0,00</strong></div>
+<div class="metric"><small>Utile stimato</small><strong id="profit">€0,00</strong></div>
+<div class="metric"><small>Prodotti in catalogo</small><strong id="productCount">0</strong></div>
+<div class="metric"><small>Vendite</small><strong id="saleCount">0</strong></div>
+</div>
+<p class="muted">L'utile è una stima: fatturato meno costo dei prodotti venduti, commissioni e spese registrate.</p>
+</div>
 
-  <section>
-    <h2>Stato</h2>
-    <p id="status">In attesa di collegamento.</p>
-  </section>
+<div class="card">
+<h2>Catalogo bracciali</h2>
+<input id="productTitle" placeholder="Nome del bracciale">
+<input id="productMaterial" placeholder="Materiale">
+<input id="productStone" placeholder="Pietra">
+<input id="productSize" type="number" step="0.1" placeholder="Dimensione in mm">
+<input id="productCost" type="number" step="0.01" placeholder="Costo (€)">
+<input id="productPrice" type="number" step="0.01" placeholder="Prezzo di vendita (€)">
+<textarea id="productDescription" placeholder="Descrizione del prodotto"></textarea>
+<button onclick="addProduct()">Aggiungi prodotto</button>
+<div id="productsList"></div>
+</div>
+
+<div class="card">
+<h2>Registra una vendita</h2>
+<select id="saleProduct"><option value="">Seleziona un prodotto</option></select>
+<input id="saleQuantity" type="number" min="1" value="1" placeholder="Quantità">
+<input id="salePrice" type="number" min="0" step="0.01" placeholder="Prezzo unitario (€)">
+<input id="saleFees" type="number" min="0" step="0.01" value="0" placeholder="Commissioni (€)">
+<select id="salePlatform">
+<option value="Vinted">Vinted</option>
+<option value="Altro">Altro</option>
+</select>
+<input id="saleReference" placeholder="Riferimento ordine (facoltativo)">
+<button onclick="addSale()">Registra vendita</button>
+</div>
+
+<div class="card">
+<h2>Registra una spesa</h2>
+<input id="expenseDescription" placeholder="Descrizione spesa">
+<input id="expenseAmount" type="number" min="0" step="0.01" placeholder="Importo (€)">
+<select id="expenseCategory">
+<option value="Materiali">Materiali</option>
+<option value="Spedizione">Spedizione</option>
+<option value="Imballaggio">Imballaggio</option>
+<option value="Pubblicità">Pubblicità</option>
+<option value="Altro">Altro</option>
+</select>
+<button onclick="addExpense()">Registra spesa</button>
+</div>
+
+<div class="card">
+<h2>Ultime vendite</h2>
+<div id="salesList" class="muted">Nessuna vendita caricata.</div>
+</div>
+</section>
 </main>
 
 <script>
-  let supabaseClient = null;
-  const $ = (id) => document.getElementById(id);
-  const status = (message) => { $('status').textContent = message; };
+let db = null;
+let currentUser = null;
+let currentWorkspace = null;
+let products = [];
 
-  $('connectBtn').addEventListener('click', () => {
-    const url = $('projectUrl').value.trim().replace(/\/+$/, '');
-    const key = $('publishableKey').value.trim();
-    if (!url || !/^https:\/\/[a-zA-Z0-9-]+\.supabase\.co$/.test(url)) {
-      status('Controlla il Project URL: deve essere simile a https://xxxxx.supabase.co');
-      return;
-    }
-    if (!key) {
-      status('Inserisci la Publishable key.');
-      return;
-    }
-    if (!window.supabase?.createClient) {
-      status('Impossibile caricare la libreria Supabase. Controlla la connessione internet.');
-      return;
-    }
-    supabaseClient = window.supabase.createClient(url, key);
-    status('Supabase collegato in questa pagina. Ora crea un account o accedi.');
-  });
+const $ = id => document.getElementById(id);
+const money = n => new Intl.NumberFormat('it-IT',{style:'currency',currency:'EUR'}).format(Number(n)||0);
+const status = message => $('appStatus').textContent = message;
 
-  $('signupBtn').addEventListener('click', async () => {
-    if (!supabaseClient) return status('Prima collega Supabase.');
-    const email = $('email').value.trim();
-    const password = $('password').value;
-    if (!email || password.length < 6) return status('Inserisci email e password di almeno 6 caratteri.');
-    const { data, error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) return status('Errore: ' + error.message);
-    status(data.session ? 'Account creato e accesso effettuato.' : 'Account creato. Se la conferma email è attiva, controlla la posta e conferma l’indirizzo.');
-  });
+async function connect(){
+ const url=$('projectUrl').value.trim().replace(/\/$/,'');
+ const key=$('apiKey').value.trim();
+ if(!url.startsWith('https://') || !key){
+  alert('Inserisci Project URL e Publishable key.');
+  return;
+ }
+ try{
+  db=window.supabase.createClient(url,key);
+  localStorage.setItem('vab_url',url);
+  localStorage.setItem('vab_key',key);
+  $('connection').classList.add('hidden');
+  $('auth').classList.remove('hidden');
+  const {data}=await db.auth.getSession();
+  if(data.session) await startApp(data.session.user);
+ }catch(e){alert('Errore di connessione: '+e.message);}
+}
 
-  $('loginBtn').addEventListener('click', async () => {
-    if (!supabaseClient) return status('Prima collega Supabase.');
-    const email = $('email').value.trim();
-    const password = $('password').value;
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) return status('Errore: ' + error.message);
-    status('Accesso effettuato: ' + data.user.email);
-  });
+async function login(){
+ if(!db)return;
+ const {data,error}=await db.auth.signInWithPassword({
+  email:$('email').value.trim(),
+  password:$('password').value
+ });
+ if(error){$('authStatus').textContent=error.message;return;}
+ await startApp(data.user);
+}
 
-  $('logoutBtn').addEventListener('click', async () => {
-    if (!supabaseClient) return status('Prima collega Supabase.');
-    const { error } = await supabaseClient.auth.signOut();
-    status(error ? 'Errore: ' + error.message : 'Sei uscito dall’account.');
-  });
+async function signup(){
+ if(!db)return;
+ const {data,error}=await db.auth.signUp({
+  email:$('email').value.trim(),
+  password:$('password').value
+ });
+ $('authStatus').textContent=error?error.message:'Registrazione inviata. Se richiesto, conferma la tua email.';
+ if(data.session) await startApp(data.user);
+}
 
-  $('workspaceBtn').addEventListener('click', async () => {
-    if (!supabaseClient) return status('Prima collega Supabase.');
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !userData.user) return status('Devi prima effettuare l’accesso.');
-    const name = $('workspaceName').value.trim();
-    if (!name) return status('Inserisci un nome per il workspace.');
-    const { data, error } = await supabaseClient.rpc('create_workspace', { p_name: name });
-    if (error) return status('Errore nella creazione del workspace: ' + error.message);
-    status('Workspace creato correttamente. Risposta: ' + JSON.stringify(data));
-  });
+async function startApp(user){
+ currentUser=user;
+ $('auth').classList.add('hidden');
+ $('app').classList.remove('hidden');
+ $('userInfo').textContent='Account: '+user.email;
+ await loadWorkspaces();
+}
+
+async function loadWorkspaces(){
+ status('Caricamento workspace...');
+ const {data:members,error}=await db.from('workspace_members')
+  .select('workspace_id,role').eq('user_id',currentUser.id);
+ if(error){status('Errore workspace: '+error.message);return;}
+ if(!members || !members.length){
+  status('Non risulti membro di un workspace. Verifica la creazione del workspace.');
+  return;
+ }
+ const ids=members.map(m=>m.workspace_id);
+ const {data:spaces,error:spaceError}=await db.from('workspaces')
+  .select('id,name').in('id',ids);
+ if(spaceError){status('Errore caricamento workspace: '+spaceError.message);return;}
+ $('workspaceSelect').innerHTML='';
+ spaces.forEach(w=>{
+  const option=document.createElement('option');
+  option.value=w.id;
+  option.textContent=w.name;
+  $('workspaceSelect').appendChild(option);
+ });
+ if(spaces.length){
+  currentWorkspace=spaces[0].id;
+  $('workspaceSelect').value=currentWorkspace;
+  await refresh();
+ }else status('Nessun workspace disponibile.');
+}
+
+async function selectWorkspace(){
+ currentWorkspace=$('workspaceSelect').value;
+ await refresh();
+}
+
+async function refresh(){
+ if(!currentWorkspace)return;
+ status('Aggiornamento dati...');
+ const [p,s,e]=await Promise.all([
+  db.from('products').select('*').eq('workspace_id',currentWorkspace).order('created_at',{ascending:false}),
+  db.from('sales').select('*').eq('workspace_id',currentWorkspace).order('sold_at',{ascending:false}),
+  db.from('expenses').select('*').eq('workspace_id',currentWorkspace)
+ ]);
+ if(p.error||s.error||e.error){
+  status('Errore: '+(p.error||s.error||e.error).message);
+  return;
+ }
+ products=p.data||[];
+ const sales=s.data||[];
+ const expenses=e.data||[];
+ const saleIds=sales.map(x=>x.id);
+ let items=[];
+ if(saleIds.length){
+  const result=await db.from('sale_items').select('*').in('sale_id',saleIds);
+  if(result.error){status('Errore articoli venduti: '+result.error.message);return;}
+  items=result.data||[];
+ }
+ const revenue=items.reduce((a,x)=>a+Number(x.quantity)*Number(x.unit_sale_price),0);
+ const productCosts=items.reduce((a,x)=>a+Number(x.quantity)*Number(x.unit_cost_snapshot),0);
+ const fees=sales.reduce((a,x)=>a+Number(x.fees||0),0);
+ const expenseTotal=expenses.reduce((a,x)=>a+Number(x.amount||0),0);
+ $('revenue').textContent=money(revenue);
+ $('costs').textContent=money(productCosts);
+ $('expensesTotal').textContent=money(expenseTotal);
+ $('profit').textContent=money(revenue-productCosts-fees-expenseTotal);
+ $('productCount').textContent=products.length;
+ $('saleCount').textContent=sales.length;
+ renderProducts();
+ renderSales(sales,items);
+ status('Dati aggiornati.');
+}
+
+function renderProducts(){
+ $('productsList').innerHTML='';
+ $('saleProduct').innerHTML='<option value="">Seleziona un prodotto</option>';
+ products.forEach(p=>{
+  const div=document.createElement('div');
+  div.className='item';
+  div.innerHTML='<div class="row"><strong></strong><span></span></div><div class="muted"></div>';
+  div.querySelector('strong').textContent=p.title;
+  div.querySelector('span').textContent=money(p.listing_price||p.suggested_price||0);
+  div.querySelector('.muted').textContent=[p.material,p.stone,p.size_mm?p.size_mm+' mm':null].filter(Boolean).join(' • ');
+  $('productsList').appendChild(div);
+  const opt=document.createElement('option');
+  opt.value=p.id;opt.textContent=p.title;
+  $('saleProduct').appendChild(opt);
+ });
+}
+
+async function addProduct(){
+ if(!currentWorkspace)return;
+ const title=$('productTitle').value.trim();
+ if(!title){alert('Inserisci il nome del prodotto.');return;}
+ const cost=Number($('productCost').value||0);
+ const price=Number($('productPrice').value||0);
+ const record={
+  workspace_id:currentWorkspace,
+  created_by:currentUser.id,
+  title,
+  material:$('productMaterial').value.trim()||null,
+  stone:$('productStone').value.trim()||null,
+  size_mm:$('productSize').value?Number($('productSize').value):null,
+  cost,
+  suggested_price:price,
+  listing_price:price,
+  description:$('productDescription').value.trim()||null,
+  status:'available'
+ };
+ const {error}=await db.from('products').insert(record);
+ if(error){alert('Errore: '+error.message);return;}
+ ['productTitle','productMaterial','productStone','productSize','productCost','productPrice','productDescription'].forEach(id=>$(id).value='');
+ await refresh();
+}
+
+async function addSale(){
+ if(!currentWorkspace)return;
+ const product=products.find(p=>p.id===$('saleProduct').value);
+ if(!product){alert('Seleziona un prodotto.');return;}
+ const quantity=Math.max(1,Number($('saleQuantity').value||1));
+ const price=Number($('salePrice').value||product.listing_price||product.suggested_price||0);
+ const fees=Number($('saleFees').value||0);
+ const {data:sale,error}=await db.from('sales').insert({
+  workspace_id:currentWorkspace,
+  created_by:currentUser.id,
+  sold_at:new Date().toISOString(),
+  platform:$('salePlatform').value,
+  order_reference:$('saleReference').value.trim()||null,
+  fees,
+  notes:null
+ }).select().single();
+ if(error){alert('Errore vendita: '+error.message);return;}
+ const {error:itemError}=await db.from('sale_items').insert({
+  sale_id:sale.id,
+  product_id:product.id,
+  product_title_snapshot:product.title,
+  quantity,
+  unit_sale_price:price,
+  unit_cost_snapshot:Number(product.cost||0)
+ });
+ if(itemError){alert('Vendita creata, ma errore nel prodotto della vendita: '+itemError.message);return;}
+ $('saleProduct').value='';
+ $('saleQuantity').value=1;
+ $('salePrice').value='';
+ $('saleFees').value=0;
+ $('saleReference').value='';
+ await refresh();
+}
+
+async function addExpense(){
+ if(!currentWorkspace)return;
+ const description=$('expenseDescription').value.trim();
+ const amount=Number($('expenseAmount').value);
+ if(!description||!amount||amount<=0){alert('Inserisci descrizione e importo validi.');return;}
+ const {error}=await db.from('expenses').insert({
+  workspace_id:currentWorkspace,
+  created_by:currentUser.id,
+  description,
+  amount,
+  category:$('expenseCategory').value,
+  spent_at:new Date().toISOString().slice(0,10)
+ });
+ if(error){alert('Errore spesa: '+error.message);return;}
+ $('expenseDescription').value='';
+ $('expenseAmount').value='';
+ await refresh();
+}
+
+function renderSales(sales,items){
+ $('salesList').innerHTML='';
+ if(!sales.length){$('salesList').textContent='Nessuna vendita registrata.';return;}
+ sales.slice(0,10).forEach(s=>{
+  const total=items.filter(i=>i.sale_id===s.id)
+   .reduce((a,i)=>a+Number(i.quantity)*Number(i.unit_sale_price),0);
+  const div=document.createElement('div');
+  div.className='item row';
+  const left=document.createElement('span');
+  left.textContent=(s.platform||'Vendita')+' • '+new Date(s.sold_at).toLocaleDateString('it-IT');
+  const right=document.createElement('strong');
+  right.textContent=money(total);
+  div.append(left,right);
+  $('salesList').appendChild(div);
+ });
+}
+
+async function logout(){
+ await db.auth.signOut();
+ currentUser=null;currentWorkspace=null;
+ $('app').classList.add('hidden');
+ $('auth').classList.remove('hidden');
+}
+
+window.addEventListener('load',()=>{
+ const url=localStorage.getItem('vab_url');
+ const key=localStorage.getItem('vab_key');
+ if(url&&key){
+  $('projectUrl').value=url;
+  $('apiKey').value=key;
+ }
+});
 </script>
 </body>
 </html>
+
