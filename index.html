@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vinted AI Business</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { color-scheme: dark; --bg:#101114; --panel:#1b1d22; --line:#30333b; --muted:#a6a9b2; --accent:#a78bfa; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:24px 16px; background:var(--bg); color:#f5f5f7; font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; }
+    main { width:min(100%,680px); margin:0 auto; }
+    h1 { margin:0 0 6px; font-size:28px; }
+    .sub { color:var(--muted); margin:0 0 24px; }
+    section { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px; margin:16px 0; }
+    h2 { margin:0 0 14px; font-size:19px; }
+    label { display:block; margin:12px 0 6px; color:#d7d8de; font-size:14px; }
+    input { width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; background:#111318; color:white; font:inherit; }
+    button { padding:11px 15px; margin:12px 8px 0 0; border:0; border-radius:10px; background:var(--accent); color:#171321; font-weight:700; font-size:15px; }
+    button.secondary { background:#343741; color:white; }
+    button:disabled { opacity:.5; }
+    #status { white-space:pre-wrap; color:#d7d8de; overflow-wrap:anywhere; }
+    .hint { color:var(--muted); font-size:13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Vinted AI Business</h1>
+  <p class="sub">Pannello iniziale per gestire il tuo team di vendita.</p>
+
+  <section>
+    <h2>1. Collega Supabase</h2>
+    <p class="hint">Inserisci l'URL del progetto e la chiave pubblica (Publishable key) del tuo progetto Supabase. Non inserire mai la Secret key o service_role key.</p>
+    <label for="projectUrl">Project URL</label>
+    <input id="projectUrl" type="url" placeholder="https://xxxxx.supabase.co" autocomplete="url">
+    <label for="publishableKey">Publishable key</label>
+    <input id="publishableKey" type="password" placeholder="sb_publishable_..." autocomplete="off">
+    <button id="connectBtn">Collega Supabase</button>
+  </section>
+
+  <section>
+    <h2>2. Account</h2>
+    <label for="email">Email</label>
+    <input id="email" type="email" placeholder="nome@email.com" autocomplete="email">
+    <label for="password">Password</label>
+    <input id="password" type="password" placeholder="Almeno 6 caratteri" autocomplete="current-password">
+    <button id="signupBtn" class="secondary">Crea account</button>
+    <button id="loginBtn">Accedi</button>
+    <button id="logoutBtn" class="secondary">Esci</button>
+  </section>
+
+  <section>
+    <h2>3. Crea il workspace</h2>
+    <label for="workspaceName">Nome del workspace</label>
+    <input id="workspaceName" value="Vinted AI Business">
+    <button id="workspaceBtn">Crea workspace</button>
+    <p class="hint">Devi prima collegare Supabase ed effettuare l'accesso.</p>
+  </section>
+
+  <section>
+    <h2>Stato</h2>
+    <p id="status">In attesa di collegamento.</p>
+  </section>
+</main>
+
+<script>
+  let supabaseClient = null;
+  const $ = (id) => document.getElementById(id);
+  const status = (message) => { $('status').textContent = message; };
+
+  $('connectBtn').addEventListener('click', () => {
+    const url = $('projectUrl').value.trim().replace(/\/+$/, '');
+    const key = $('publishableKey').value.trim();
+    if (!url || !/^https:\/\/[a-zA-Z0-9-]+\.supabase\.co$/.test(url)) {
+      status('Controlla il Project URL: deve essere simile a https://xxxxx.supabase.co');
+      return;
+    }
+    if (!key) {
+      status('Inserisci la Publishable key.');
+      return;
+    }
+    if (!window.supabase?.createClient) {
+      status('Impossibile caricare la libreria Supabase. Controlla la connessione internet.');
+      return;
+    }
+    supabaseClient = window.supabase.createClient(url, key);
+    status('Supabase collegato in questa pagina. Ora crea un account o accedi.');
+  });
+
+  $('signupBtn').addEventListener('click', async () => {
+    if (!supabaseClient) return status('Prima collega Supabase.');
+    const email = $('email').value.trim();
+    const password = $('password').value;
+    if (!email || password.length < 6) return status('Inserisci email e password di almeno 6 caratteri.');
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) return status('Errore: ' + error.message);
+    status(data.session ? 'Account creato e accesso effettuato.' : 'Account creato. Se la conferma email è attiva, controlla la posta e conferma l’indirizzo.');
+  });
+
+  $('loginBtn').addEventListener('click', async () => {
+    if (!supabaseClient) return status('Prima collega Supabase.');
+    const email = $('email').value.trim();
+    const password = $('password').value;
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) return status('Errore: ' + error.message);
+    status('Accesso effettuato: ' + data.user.email);
+  });
+
+  $('logoutBtn').addEventListener('click', async () => {
+    if (!supabaseClient) return status('Prima collega Supabase.');
+    const { error } = await supabaseClient.auth.signOut();
+    status(error ? 'Errore: ' + error.message : 'Sei uscito dall’account.');
+  });
+
+  $('workspaceBtn').addEventListener('click', async () => {
+    if (!supabaseClient) return status('Prima collega Supabase.');
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !userData.user) return status('Devi prima effettuare l’accesso.');
+    const name = $('workspaceName').value.trim();
+    if (!name) return status('Inserisci un nome per il workspace.');
+    const { data, error } = await supabaseClient.rpc('create_workspace', { p_name: name });
+    if (error) return status('Errore nella creazione del workspace: ' + error.message);
+    status('Workspace creato correttamente. Risposta: ' + JSON.stringify(data));
+  });
+</script>
+</body>
+</html>
